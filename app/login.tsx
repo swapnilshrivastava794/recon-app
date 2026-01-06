@@ -14,20 +14,20 @@ export default function LoginScreen() {
   const { width, height } = useWindowDimensions();
   const isWebOrTablet = width > 768; // Breakpoint for split layout
   
-  const [email, setEmail] = useState('admin@recon.com');
-  const [password, setPassword] = useState('12345678');
+  const [username, setUsername] = useState('reporter_3');
+  const [password, setPassword] = useState('asdf@123');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
 
   const handleLogin = async () => {
-    if (email === '' || password === '') {
-      Alert.alert('Error', 'Please enter email and password');
+    if (username === '' || password === '') {
+      Alert.alert('Error', 'Please enter username and password');
       return;
     }
 
     setIsLoggingIn(true);
-    const success = await login(email, password);
+    const success = await login(username, password);
     setIsLoggingIn(false);
 
     if (success) {
@@ -63,17 +63,16 @@ export default function LoginScreen() {
                 {/* Form Fields */}
                 <Animated.View entering={FadeInUp.delay(200).duration(700).springify().damping(30).mass(1).stiffness(200)} style={styles.formContainer}>
                   
-                  {/* Email */}
+                  {/* Username */}
                   <View style={styles.inputGroup}>
-                    <Text style={styles.label}>Email address</Text>
+                    <Text style={styles.label}>Username</Text>
                     <TextInput 
                       style={styles.input}
-                      placeholder="Enter your email"
+                      placeholder="Enter your username"
                       placeholderTextColor="#9CA3AF"
-                      value={email}
-                      onChangeText={setEmail}
+                      value={username}
+                      onChangeText={setUsername}
                       autoCapitalize="none"
-                      keyboardType="email-address"
                     />
                   </View>
 

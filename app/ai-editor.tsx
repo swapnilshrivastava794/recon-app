@@ -28,18 +28,17 @@ export default function AIEditorScreen() {
     push: false,
   });
 
+  // Tab State
+  const [activeTab, setActiveTab] = useState<'story' | 'settings'>('story');
+
   // Success State
   const [showSuccess, setShowSuccess] = useState(false);
 
-  // Initialize AI Content
   useEffect(() => {
-    const mockSlug = (initialHeadline || 'Untitled').toLowerCase().replace(/ /g, '-').slice(0, 50);
-    setMetaTitle(initialHeadline || "AI Generated Title for SEO");
-    setSlug(mockSlug || "new-story-update-2025");
-    setSummary((initialBody ? initialBody.slice(0, 100) : "This story covers the recent developments, bringing you the latest updates.") + "...");
-    setAiTags(['Politics', 'Delhi', 'Urgent', 'Local']);
-    if (params.isBreaking === 'true') setPublishOptions(prev => ({ ...prev, breaking: true }));
-  }, []);
+    if (params.isBreaking === 'true') {
+        setPublishOptions(prev => ({ ...prev, breaking: true }));
+    }
+  }, [params.isBreaking]);
 
   const handleFinalPublish = () => {
      setShowSuccess(true);
@@ -76,9 +75,25 @@ export default function AIEditorScreen() {
              <View style={{width: 24}} /> 
           </View>
 
+          {/* Tab Bar */}
+          <View style={styles.tabBar}>
+             <TouchableOpacity 
+               style={[styles.tabBtn, activeTab === 'story' && styles.tabBtnActive]}
+               onPress={() => setActiveTab('story')}
+             >
+                <Text style={[styles.tabText, activeTab === 'story' && styles.tabTextActive]}>STORY CONTENT</Text>
+             </TouchableOpacity>
+             <TouchableOpacity 
+               style={[styles.tabBtn, activeTab === 'settings' && styles.tabBtnActive]} 
+               onPress={() => setActiveTab('settings')}
+             >
+                <Text style={[styles.tabText, activeTab === 'settings' && styles.tabTextActive]}>SETTINGS & SEO</Text>
+             </TouchableOpacity>
+          </View>
+
           <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
              
-             {/* AI Notification */}
+             {/* AI Notification - Visible on both or just Story? Keeping on both for context */}
              <View style={styles.aiBanner}>
                 <View style={styles.aiBannerIcon}>
                    <Ionicons name="sparkles" size={18} color="#FFF" />
@@ -89,130 +104,141 @@ export default function AIEditorScreen() {
                 </View>
              </View>
 
-             {/* Card 1: Core Details */}
-             <View style={styles.card}>
-                <View style={styles.cardHeaderRow}>
-                   <Ionicons name="document-text" size={18} color="#3B82F6" />
-                   <Text style={styles.cardTitle}>STORY DETAILS</Text>
-                </View>
+             {/* STORY TAB CONTENT */}
+             {activeTab === 'story' && (
+               <>
+                 {/* Card 1: Core Details */}
+                 <View style={styles.card}>
+                    <View style={styles.cardHeaderRow}>
+                       <Ionicons name="document-text" size={18} color="#000" />
+                       <Text style={styles.cardTitle}>STORY DETAILS</Text>
+                    </View>
 
-                <Text style={styles.label}>HEADLINE</Text>
-                <TextInput 
-                   style={styles.premiumInput} 
-                   value={headline} 
-                   onChangeText={setHeadline}
-                   placeholder="Enter headline..."
-                />
+                    <Text style={styles.label}>HEADLINE</Text>
+                    <TextInput 
+                       style={styles.premiumInput} 
+                       value={headline} 
+                       onChangeText={setHeadline}
+                       placeholder="ENTER HEADLINE..."
+                       placeholderTextColor="#888"
+                    />
 
-                <Text style={styles.label}>SHORT DESCRIPTION</Text>
-                <TextInput 
-                   style={[styles.premiumInput, { height: 80 }]} 
-                   value={summary} 
-                   onChangeText={setSummary}
-                   multiline
-                   textAlignVertical="top"
-                />
-             </View>
+                    <Text style={styles.label}>SHORT DESCRIPTION</Text>
+                    <TextInput 
+                       style={[styles.premiumInput, { height: 100 }]} 
+                       value={summary} 
+                       onChangeText={setSummary}
+                       multiline
+                       textAlignVertical="top"
+                    />
+                 </View>
 
-             {/* Card 2: SEO & Metadata */}
-             <View style={styles.card}>
-                <View style={styles.cardHeaderRow}>
-                   <Ionicons name="globe" size={18} color="#10B981" />
-                   <Text style={styles.cardTitle}>SEO & METADATA</Text>
-                </View>
+                 {/* Card 3: Content */}
+                 <View style={styles.card}>
+                    <View style={styles.cardHeaderRow}>
+                       <Ionicons name="reader" size={18} color="#000" />
+                       <Text style={styles.cardTitle}>FULL CONTENT</Text>
+                    </View>
+                    
+                    <View style={styles.richEditorPremium}>
+                       <View style={styles.richToolbarPremium}>
+                          <Ionicons name="text" size={18} color="#000" />
+                          <Ionicons name="code-slash" size={18} color="#000" />
+                          <Ionicons name="link" size={18} color="#000" />
+                          <Ionicons name="list" size={18} color="#000" />
+                          <Ionicons name="image" size={18} color="#000" />
+                       </View>
+                       <TextInput 
+                         style={styles.richInput}
+                         value={body || "AI Generated content..."}
+                         multiline
+                         textAlignVertical="top"
+                       />
+                    </View>
+                 </View>
+               </>
+             )}
 
-                <Text style={styles.label}>META TITLE</Text>
-                <TextInput 
-                     style={styles.premiumInput} 
-                     value={metaTitle} 
-                     onChangeText={setMetaTitle} 
-                />
+             {/* SETTINGS TAB CONTENT */}
+             {activeTab === 'settings' && (
+               <>
+                 {/* Card 2: SEO & Metadata */}
+                 <View style={styles.card}>
+                    <View style={styles.cardHeaderRow}>
+                       <Ionicons name="globe" size={18} color="#000" />
+                       <Text style={styles.cardTitle}>SEO & METADATA</Text>
+                    </View>
 
-                <Text style={styles.label}>URL SLUG</Text>
-                <TextInput 
-                     style={[styles.premiumInput, { backgroundColor: '#F8FAFC', color: '#94A3B8' }]} 
-                     value={slug} 
-                     editable={false}
-                />
-                
-                <Text style={styles.label}>TAGS</Text>
-                <View style={styles.tagInputRow}>
-                   {aiTags.map((tag, i) => (
-                      <View key={i} style={styles.chipPremium}>
-                         <Text style={styles.chipTextPremium}>#{tag}</Text>
-                         <TouchableOpacity onPress={() => setAiTags(t => t.filter((_, idx) => idx !== i))}>
-                            <Ionicons name="close" size={12} color="#1E293B" />
-                         </TouchableOpacity>
-                      </View>
-                   ))}
-                   <TouchableOpacity style={styles.addTagBtnPremium}>
-                      <Ionicons name="add" size={16} color="#3B82F6" />
-                   </TouchableOpacity>
-                </View>
-             </View>
+                    <Text style={styles.label}>META TITLE</Text>
+                    <TextInput 
+                         style={styles.premiumInput} 
+                         value={metaTitle} 
+                         onChangeText={setMetaTitle} 
+                    />
 
-             {/* Card 3: Content */}
-             <View style={styles.card}>
-                <View style={styles.cardHeaderRow}>
-                   <Ionicons name="reader" size={18} color="#8B5CF6" />
-                   <Text style={styles.cardTitle}>FULL CONTENT</Text>
-                </View>
-                
-                <View style={styles.richEditorPremium}>
-                   <View style={styles.richToolbarPremium}>
-                      <Ionicons name="text" size={18} color="#475569" />
-                      <Ionicons name="code-slash" size={18} color="#475569" />
-                      <Ionicons name="link" size={18} color="#475569" />
-                      <Ionicons name="list" size={18} color="#475569" />
-                      <Ionicons name="image" size={18} color="#475569" />
-                   </View>
-                   <TextInput 
-                     style={styles.richInput}
-                     value={body || "AI Generated content..."}
-                     multiline
-                     textAlignVertical="top"
-                   />
-                </View>
-             </View>
+                    <Text style={styles.label}>URL SLUG</Text>
+                    <TextInput 
+                         style={[styles.premiumInput, { backgroundColor: '#F5F5F5', color: '#888' }]} 
+                         value={slug} 
+                         editable={false}
+                    />
+                    
+                    <Text style={styles.label}>TAGS</Text>
+                    <View style={styles.tagInputRow}>
+                       {aiTags.map((tag, i) => (
+                          <View key={i} style={styles.chipPremium}>
+                             <Text style={styles.chipTextPremium}>#{tag}</Text>
+                             <TouchableOpacity onPress={() => setAiTags(t => t.filter((_, idx) => idx !== i))}>
+                                <Ionicons name="close" size={12} color="#000" />
+                             </TouchableOpacity>
+                          </View>
+                       ))}
+                       <TouchableOpacity style={styles.addTagBtnPremium}>
+                          <Ionicons name="add" size={16} color="#000" />
+                       </TouchableOpacity>
+                    </View>
+                 </View>
 
-             {/* Card 4: Publishing Options */}
-             <View style={styles.card}>
-                <View style={styles.cardHeaderRow}>
-                   <Ionicons name="paper-plane" size={18} color="#F59E0B" />
-                   <Text style={styles.cardTitle}>PUBLISHING</Text>
-                </View>
+                 {/* Card 4: Publishing Options */}
+                 <View style={styles.card}>
+                    <View style={styles.cardHeaderRow}>
+                       <Ionicons name="paper-plane" size={18} color="#000" />
+                       <Text style={styles.cardTitle}>PUBLISHING</Text>
+                    </View>
 
-                <View style={styles.optionList}>
-                   {[
-                     { key: 'latest', label: 'Latest News', icon: 'time' },
-                     { key: 'breaking', label: 'Breaking News', icon: 'flash' },
-                     { key: 'trending', label: 'Trending', icon: 'trending-up' },
-                     { key: 'push', label: 'Push Notification', icon: 'notifications' },
-                   ].map((opt: any) => {
-                      const isActive = publishOptions[opt.key as keyof typeof publishOptions];
-                      return (
-                         <TouchableOpacity 
-                           key={opt.key}
-                           style={[styles.optionRowPremium, isActive && styles.optionRowActivePremium]}
-                           onPress={() => setPublishOptions({...publishOptions, [opt.key]: !isActive})}
-                         >
-                            <View style={{flexDirection:'row', alignItems:'center', gap: 12}}>
-                               <View style={[styles.iconBoxPremium, isActive && {backgroundColor:'rgba(255,255,255,0.2)'}]}>
-                                  <Ionicons name={opt.icon} size={18} color={isActive ? '#FFF' : '#64748B'} />
-                               </View>
-                               <Text style={[styles.optionLabelPremium, isActive && styles.optionLabelActive]}>{opt.label}</Text>
-                            </View>
-                            <Switch 
-                               value={isActive}
-                               onValueChange={() => setPublishOptions({...publishOptions, [opt.key]: !isActive})}
-                               trackColor={{ false: '#E2E8F0', true: '#10B981' }}
-                               thumbColor={'#FFF'}
-                            />
-                         </TouchableOpacity>
-                      );
-                   })}
-                </View>
-             </View>
+                    <View style={styles.optionList}>
+                       {[
+                         { key: 'latest', label: 'Latest News', icon: 'time' },
+                         { key: 'breaking', label: 'Breaking News', icon: 'flash' },
+                         { key: 'trending', label: 'Trending', icon: 'trending-up' },
+                         { key: 'push', label: 'Push Notification', icon: 'notifications' },
+                       ].map((opt: any) => {
+                          const isActive = publishOptions[opt.key as keyof typeof publishOptions];
+                          return (
+                             <TouchableOpacity 
+                               key={opt.key}
+                               style={[styles.optionRowPremium, isActive && styles.optionRowActivePremium]}
+                               onPress={() => setPublishOptions({...publishOptions, [opt.key]: !isActive})}
+                             >
+                                <View style={{flexDirection:'row', alignItems:'center', gap: 12}}>
+                                   <View style={[styles.iconBoxPremium, isActive && {backgroundColor:'#000'}]}>
+                                      <Ionicons name={opt.icon} size={16} color={isActive ? '#FFF' : '#000'} />
+                                   </View>
+                                   <Text style={[styles.optionLabelPremium, isActive && styles.optionLabelActive]}>{opt.label}</Text>
+                                </View>
+                                <Switch 
+                                   value={isActive}
+                                   onValueChange={() => setPublishOptions({...publishOptions, [opt.key]: !isActive})}
+                                   trackColor={{ false: '#E2E8F0', true: '#000' }}
+                                   thumbColor={'#FFF'}
+                                />
+                             </TouchableOpacity>
+                          );
+                       })}
+                    </View>
+                 </View>
+               </>
+             )}
 
              <View style={{height: 100}} />
           </ScrollView>
@@ -301,24 +327,24 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF',
     borderRadius: 0, // SHARP
     paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingVertical: 16, // CHUNKY
     fontSize: 16,
     color: '#000',
     marginBottom: 24,
     borderWidth: 1,
-    borderColor: '#CCC', // Visible border
+    borderColor: '#CCC',
   },
   richEditorPremium: {
     borderWidth: 1,
     borderColor: '#CCC',
     borderRadius: 0, // SHARP
     backgroundColor: '#FFF',
-    height: 200,
+    height: 220, // TALLER
   },
   richToolbarPremium: {
     flexDirection: 'row',
-    backgroundColor: '#F5F5F5',
-    paddingVertical: 12,
+    backgroundColor: '#FAFAFA',
+    paddingVertical: 14,
     paddingHorizontal: 16,
     gap: 24,
     borderBottomWidth: 1,
@@ -328,7 +354,7 @@ const styles = StyleSheet.create({
     padding: 20,
     fontSize: 16,
     color: '#000',
-    lineHeight: 24,
+    lineHeight: 26,
     flex: 1,
   },
   aiBanner: {
@@ -336,14 +362,14 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     backgroundColor: '#000', // Solid Black
     borderRadius: 0, // SHARP
-    padding: 20,
+    padding: 24, // CHUNKY
     flexDirection: 'row',
     alignItems: 'center',
     gap: 16,
   },
   aiBannerIcon: {
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
     borderRadius: 0, // SHARP SQUARE
     backgroundColor: '#333',
     justifyContent: 'center',
@@ -361,9 +387,9 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   chipPremium: {
-    backgroundColor: '#F0F0F0',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    backgroundColor: '#F5F5F5',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
     borderRadius: 0, // SHARP
     flexDirection: 'row',
     alignItems: 'center',
@@ -378,8 +404,8 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   addTagBtnPremium: {
-    width: 36,
-    height: 36,
+    width: 38,
+    height: 38,
     borderRadius: 0, // SHARP
     backgroundColor: '#FFF',
     justifyContent: 'center',
@@ -402,25 +428,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    paddingVertical: 16, // CHUNKY
+    paddingHorizontal: 20,
     backgroundColor: '#FFF',
     borderBottomWidth: 1,
     borderBottomColor: '#E5E5E5',
   },
   optionRowActivePremium: {
-    backgroundColor: '#F9F9F9',
+    backgroundColor: '#FAFAFA',
   },
   iconBoxPremium: {
-    width: 32,
-    height: 32,
+    width: 36,
+    height: 36,
     borderRadius: 0, // SHARP
     backgroundColor: '#000', // Black Icon Box
     justifyContent: 'center',
     alignItems: 'center',
   },
   optionLabelPremium: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '700',
     color: '#000',
     textTransform: 'uppercase',
@@ -429,7 +455,7 @@ const styles = StyleSheet.create({
     // color handled directly
   },
   footerPremium: {
-    padding: 16,
+    padding: 20,
     backgroundColor: '#FFF',
     borderTopWidth: 1,
     borderTopColor: '#E5E5E5',
@@ -437,15 +463,15 @@ const styles = StyleSheet.create({
   submitBtnPremium: {
     backgroundColor: '#000',
     borderRadius: 0, // SHARP
-    paddingVertical: 12,
+    paddingVertical: 20, // EXTRA CHUNKY
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 10,
+    gap: 12,
   },
   submitTextPremium: {
     color: '#FFF',
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '800',
     letterSpacing: 2, // WIDE TRACKING
     textTransform: 'uppercase',
@@ -501,4 +527,34 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
+  
+  // TAB STYLES
+  tabBar: {
+    flexDirection: 'row',
+    backgroundColor: '#FAFAFA',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5E5',
+    // paddingTop: 0, // No extra padding needed
+  },
+  tabBtn: {
+    flex: 1,
+    paddingVertical: 16,
+    alignItems: 'center',
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  tabBtnActive: {
+    backgroundColor: '#FFF',
+    borderBottomColor: '#000',
+  },
+  tabText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#888',
+    letterSpacing: 1,
+  },
+  tabTextActive: {
+    color: '#000',
+  },
 });
+

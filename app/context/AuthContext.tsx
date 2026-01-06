@@ -1,44 +1,109 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter, useSegments } from 'expo-router';
+import { login as apiLogin, signup as apiSignup, logoutUser as apiLogout, saveToken, getReporterProfile } from '../server';
 
 type User = {
   email: string;
   name: string;
-  token: string;
+  // Add other user fields as returned by your backend
 } | null;
 
+// Define Profile Type
+export type ReporterProfile = {
+  id: number;
+  username: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  phone_number: string;
+  bio: string;
+  city: string;
+  state: string;
+  pincode: string;
+  selfie_photo: string | null;
+  id_proof_type: string;
+  id_proof_number: string;
+  kyc_status: string;
+  reporter_status: string;
+  can_submit_stories: boolean;
+  created_at: string;
+  suspension_reason: string | null;
+  rejection_reason: string | null;
+  admin_notes: string | null;
+  years_of_experience: number | null;
+  address_line1: string;
+  address_line2: string;
+  id_proof_document: string | null;
+  // Add other fields as needed
+};
+
 type AuthContextType = {
-  user: User;
+  user: User; // Legacy simple user object
+  userProfile: ReporterProfile | null; // Full profile
   isLoading: boolean;
-  login: (email: string, pass: string) => Promise<boolean>;
-  signup: (email: string, pass: string, name: string) => Promise<boolean>;
+  login: (username: string, pass: string) => Promise<boolean>;
+  signup: (formData: FormData) => Promise<boolean>;
   logout: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
+  userProfile: null,
   isLoading: true,
   login: async () => false,
   signup: async () => false,
   logout: async () => {},
+  refreshProfile: async () => {},
 });
 
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User>(null);
+  const [userProfile, setUserProfile] = useState<ReporterProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
   const segments = useSegments();
+
+  const fetchProfile = async () => {
+      try {
+          const res = await getReporterProfile();
+          if (res.data && res.data.status && res.data.data) {
+              const profileData = res.data.data;
+              setUserProfile(profileData);
+              // Also sync legacy user state if needed
+              setUser({ 
+                  email: profileData.email, 
+                  name: profileData.username 
+              });
+              await AsyncStorage.setItem('userProfile', JSON.stringify(profileData));
+          }
+      } catch (e) {
+          console.error("Failed to fetch profile", e);
+      }
+  };
 
   useEffect(() => {
     const loadUser = async () => {
       try {
         const storedUser = await AsyncStorage.getItem('user');
+        const storedProfile = await AsyncStorage.getItem('userProfile');
+        
         if (storedUser) {
           setUser(JSON.parse(storedUser));
         }
+        if (storedProfile) {
+            setUserProfile(JSON.parse(storedProfile));
+        }
+        
+        // Always try to refresh profile on load if we have a token (implicit via axios interceptor)
+        const token = await AsyncStorage.getItem('accessToken');
+        if (token) {
+            await fetchProfile();
+        }
+
       } catch (e) {
         console.error('Failed to load user', e);
       } finally {
@@ -49,74 +114,56 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     loadUser();
   }, []);
 
-  useEffect(() => {
-    if (isLoading) return;
+  const login = async (username: string, pass: string) => {
+    try {
+      const formData = new FormData();
+      formData.append('username', username);
+      formData.append('password', pass);
 
-    const inAuthGroup = segments[0] === '(tabs)';
-    
-    // Simple navigation protection logic could go here, 
-    // but for now we'll let the login screen handle the redirect 
-    // or let the root layout handle "if !user && inAuthGroup -> replace('/login')"
-    // implementation details often vary. 
-    // Given the user wants "dashboard me jaye", explicit navigation on login is safer.
-  }, [user, isLoading, segments]);
-
-  const login = async (email: string, pass: string) => {
-    // Default ID/Password as requested
-    // You can also add more complex validation here
-    if ((email === 'admin@recon.com' || email === 'user@recon.com') && pass === '12345678') {
-      const fakeUser = {
-        email,
-        name: email.split('@')[0],
-        token: 'fake-jwt-token-123',
-      };
+      // Call API
+      const response = await apiLogin(formData);
       
-      try {
-        await AsyncStorage.setItem('user', JSON.stringify(fakeUser));
-        setUser(fakeUser);
+      const data = response.data;
+      const access = data.access || data.data?.access;
+      const refresh = data.refresh || data.data?.refresh;
+      
+      if (access) {
+        await saveToken(access, refresh);
+        
+        // Fetch Profile Immediately
+        await fetchProfile();
+        
         return true;
-      } catch (e) {
-        console.error('Login failed', e);
-        return false;
       }
+      
+      return false;
+
+    } catch (e: any) {
+      console.error('Login failed', e);
+      return false;
     }
-    
-    // Allow any login for demo if not matching default? 
-    // User said "default id password dalo taki login krke dashboard me jaye", 
-    // implying meaningful auth. I'll stick to specific credentials or allow "test" credentials.
-    // Let's being lenient but prefer the default. 
-    
-    // Actually, let's just allow it for now if they use the default, 
-    // or maybe simulate a successful login for any valid formatted email?
-    // "context api se add kro ... default id password dalo"
-    // I will enforce the check for the default one, but maybe allow others if needed.
-    // For now: STRICT check on default or generic fallback?
-    // I'll add a generic fallback for testing convenience if the user wants purely UI check.
-    // But "default id password" suggests a specific pair.
-    
-    return false;
   };
 
-  const signup = async (email: string, pass: string, name: string) => {
-    // Simulate API call
-    const fakeUser = {
-      email,
-      name,
-      token: 'fake-jwt-token-created',
-    };
+  const signup = async (formData: FormData) => {
     try {
-        await AsyncStorage.setItem('user', JSON.stringify(fakeUser));
-        setUser(fakeUser);
-        return true;
+        const response = await apiSignup(formData);
+        if (response.data && response.data.status) {
+            return true;
+        }
+        return false;
     } catch (e) {
+        console.error("Signup failed", e);
         return false;
     }
   };
 
   const logout = async () => {
     try {
+      await apiLogout();
       await AsyncStorage.removeItem('user');
+      await AsyncStorage.removeItem('userProfile');
       setUser(null);
+      setUserProfile(null);
       router.replace('/login');
     } catch (e) {
       console.error('Logout failed', e);
@@ -124,7 +171,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, signup, logout }}>
+    <AuthContext.Provider value={{ user, userProfile, isLoading, login, signup, logout, refreshProfile: fetchProfile }}>
       {children}
     </AuthContext.Provider>
   );

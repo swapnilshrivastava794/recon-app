@@ -15,16 +15,25 @@ export default function SignupScreen() {
   const isWebOrTablet = width > 768;
 
   const [name, setName] = useState('');
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   
   const [showPassword, setShowPassword] = useState(false);
-  const [isKycRequired, setIsKycRequired] = useState(true); // Default to checked as per "Reporter" app nature
+  const [isKycRequired, setIsKycRequired] = useState(true);
 
-  const handleSignup = async () => {
-    if (!name || !email || !password || !confirmPassword) {
+  // Auto-fill username when name changes, unless user manually edits username (simplified for now: just auto-fill)
+  const handleNameChange = (text: string) => {
+    setName(text);
+    // Auto-generate username: lowercase, replace spaces with underscores, remove special chars
+    const autoUsername = text.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, '_');
+    setUsername(autoUsername);
+  };
+
+  const handleSignup = () => {
+    if (!name || !username || !email || !password || !confirmPassword) {
       Alert.alert('Error', 'Please fill in all fields');
       return;
     }
@@ -34,21 +43,16 @@ export default function SignupScreen() {
       return;
     }
     
-    setLoading(true);
-    const success = await signup(email, password, name);
-    setLoading(false);
-
-    if (success) {
-      if (isKycRequired) {
-        // User explicitly asked for KYC or it's required
-        router.push('/kyc');
-      } else {
-         // Maybe go to tabs directly? But for now default is KYC
-        router.push('/kyc');
+    // Navigate to KYC screen with params
+    router.push({
+      pathname: '/kyc',
+      params: { 
+        name,
+        username, // Pass username
+        email, 
+        password 
       }
-    } else {
-      Alert.alert('Error', 'Signup failed');
-    }
+    });
   };
 
   return (
@@ -85,7 +89,20 @@ export default function SignupScreen() {
                       placeholder="John Doe"
                       placeholderTextColor="#9CA3AF"
                       value={name}
-                      onChangeText={setName}
+                      onChangeText={handleNameChange} // Use custom handler
+                    />
+                  </View>
+
+                  {/* Username (Auto-filled but editable) */}
+                   <View style={styles.inputGroup}>
+                    <Text style={styles.label}>Username</Text>
+                    <TextInput 
+                      style={styles.input}
+                      placeholder="john_doe"
+                      placeholderTextColor="#9CA3AF"
+                      value={username}
+                      onChangeText={setUsername}
+                      autoCapitalize="none"
                     />
                   </View>
 

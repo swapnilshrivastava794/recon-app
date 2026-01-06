@@ -12,7 +12,10 @@ import GlassHeader from '@/components/GlassHeader';
 import Bounceable from '@/components/BouncyButton';
 import { Colors } from '@/constants/theme';
 
+import { useAuth } from '../context/AuthContext';
+
 export default function DashboardScreen() {
+  const { userProfile } = useAuth(); // Get userProfile
   const router = useRouter();
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
@@ -59,6 +62,15 @@ export default function DashboardScreen() {
                    <Text style={[styles.portalText, { color: colors.text }]}>{selectedPortal}</Text>
                    <Ionicons name="chevron-down" size={14} color={colors.text} />
                  </Bounceable>
+
+                 {/* PENDING STATUS ALERT */}
+                 {userProfile?.reporter_status === 'PENDING' && (
+                     <View style={{ backgroundColor: '#FFFBEB', padding: 8, paddingHorizontal: 12, borderRadius: 8, marginBottom: 12, borderWidth: 1, borderColor: '#FEF3C7', alignSelf: 'flex-start' }}>
+                        <Text style={{ color: '#D97706', fontSize: 12, fontWeight: '700' }}>
+                            <Ionicons name="time" size={12} /> Account Under Review
+                        </Text>
+                     </View>
+                 )}
 
                  <View style={styles.greetingSection}>
                     <Text style={[styles.greetingText, { color: colors.icon }]}>Good Morning,</Text>

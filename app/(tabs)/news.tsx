@@ -9,7 +9,11 @@ import GlassHeader from '@/components/GlassHeader';
 import Bounceable from '@/components/BouncyButton';
 import { Colors } from '@/constants/theme';
 
+import { useAuth } from '../context/AuthContext';
+
 const CATEGORIES = ['All', 'Under Review', 'Needs Correction', 'Approved', 'Published', 'Rejected'];
+
+
 
 const NEWS_DATA = [
   {
@@ -59,6 +63,7 @@ const NEWS_DATA = [
 ];
 
 export default function NewsScreen() {
+  const { userProfile } = useAuth();
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
   const [activeCategory, setActiveCategory] = useState('All');
@@ -66,6 +71,8 @@ export default function NewsScreen() {
   const filteredNews = activeCategory === 'All' 
     ? NEWS_DATA 
     : NEWS_DATA.filter(item => item.status === activeCategory);
+
+  // ... (getStatusColor and renderNewsItem remain same)
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -130,6 +137,15 @@ export default function NewsScreen() {
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={
            <View style={styles.categoriesContainer}>
+              {/* PENDING STATUS ALERT */}
+              {userProfile?.reporter_status === 'PENDING' && (
+                   <View style={{ backgroundColor: '#FFFBEB', marginHorizontal: 20, marginBottom: 16, padding: 8, paddingHorizontal: 12, borderRadius: 8, borderWidth: 1, borderColor: '#FEF3C7', alignSelf: 'flex-start' }}>
+                      <Text style={{ color: '#D97706', fontSize: 12, fontWeight: '700' }}>
+                          <Ionicons name="time" size={12} /> Account Under Review
+                      </Text>
+                   </View>
+               )}
+
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoriesList}>
                 {CATEGORIES.map((cat, index) => (
                   <Bounceable 

@@ -15,22 +15,40 @@ import Animated, { FadeInUp } from 'react-native-reanimated';
 import { Colors } from '@/constants/theme';
 
 export default function ProfileScreen() {
-  const { user, logout } = useAuth();
+  const { user, userProfile, logout } = useAuth();
+  const router = useRouter();
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
   
-  const [profileImage, setProfileImage] = useState<string | null>(null);
-  const [name, setName] = useState(user?.name || 'Reporter One');
-  const [role, setRole] = useState('Senior Reporter');
-  const [portal, setPortal] = useState('JANPUNJAB');
-  const [location, setLocation] = useState('New York, USA');
-  const [department, setDepartment] = useState('Politics & Crime');
-  const [bio, setBio] = useState('Investigative journalist with 5+ years of experience covering local politics and urban development.');
-  const [email, setEmail] = useState('reporter@recon.app');
+  // Determine display data directly from context
+  const name = userProfile?.username || user?.name || 'Reporter';
+  const email = userProfile?.email || 'reporter@recon.app';
+  const bio = userProfile?.bio || '';
+  const phone = userProfile?.phone_number || '';
+  const idType = userProfile?.id_proof_type || '';
+  const idNumber = userProfile?.id_proof_number || '';
 
-  const handleSave = () => {
-    Alert.alert('Success', 'Profile updated successfully!');
+  // Construct full address dynamically
+  const fullAddressParts = [
+      userProfile?.address_line1, 
+      userProfile?.address_line2, 
+      userProfile?.city, 
+      userProfile?.state, 
+      userProfile?.pincode
+  ].filter(part => part && part.trim() !== '');
+  
+  const fullLocation = fullAddressParts.length > 0 
+      ? fullAddressParts.join(', ') 
+      : 'Location details not provided';
+
+  // Base URL logic
+  const getFullImageUrl = (path: string | null | undefined) => {
+      if (!path) return null;
+      if (path.startsWith('http')) return path;
+      return `http://192.168.29.97:8000${path}`;
   };
+
+  const profileImage = getFullImageUrl(userProfile?.selfie_photo);
 
   const handleLogout = () => {
     Alert.alert('Log Out', 'Are you sure you want to log out?', [
@@ -39,29 +57,20 @@ export default function ProfileScreen() {
     ]);
   };
 
-  const handleImagePick = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
-
-    if (!result.canceled) {
-      setProfileImage(result.assets[0].uri);
-    }
-  };
-
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
-      
-      {/* 1. Sharp Header (Reverted) */}
+      {/* 1. Sharp Header */}
       <SafeAreaView edges={['top']} style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
         <Text style={[styles.headerTitle, { color: colors.text }]}>MY PROFILE</Text>
-        <Bounceable onPress={handleLogout} style={styles.logoutBtn}>
-           <Ionicons name="log-out-outline" size={24} color={colors.text} />
-        </Bounceable>
+        
+        <View style={{ flexDirection: 'row', gap: 4 }}>
+            <Bounceable onPress={() => router.push('/edit-profile')} style={styles.logoutBtn}>
+               <Ionicons name="pencil" size={20} color={colors.text} />
+            </Bounceable>
+            <Bounceable onPress={handleLogout} style={styles.logoutBtn}>
+               <Ionicons name="log-out-outline" size={24} color={colors.text} />
+            </Bounceable>
+        </View>
       </SafeAreaView>
 
       <ScrollView contentContainerStyle={{ paddingBottom: 40, padding: 20 }} showsVerticalScrollIndicator={false}>
@@ -72,116 +81,174 @@ export default function ProfileScreen() {
                 
                 {/* Avatar with Upload */}
                 <View style={styles.avatarContainer}>
-                   <Bounceable onPress={handleImagePick}>
+                   <View>
                      <Image 
                         source={{ uri: profileImage || 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y' }} 
                         style={[styles.avatar, {  borderColor: colors.border, backgroundColor: colors.surface }]} 
                      />
-                     {/* Edit Overlay */}
-                     <View style={[styles.editOverlay, { backgroundColor: colors.text }]}>
-                        <Ionicons name="camera" size={12} color={colors.background} />
-                     </View>
-                   </Bounceable>
+                   </View>
                    
                    {/* Verification Badge */}
-                   <View style={[styles.verifiedBadge, { backgroundColor: colors.text, borderColor: colors.background }]}>
-                      <Ionicons name="checkmark" size={10} color={colors.background} />
-                   </View>
+                   {userProfile?.kyc_status === 'APPROVED' && (
+                       <View style={[styles.verifiedBadge, { backgroundColor: colors.text, borderColor: colors.background }]}>
+                          <Ionicons name="checkmark" size={10} color={colors.background} />
+                       </View>
+                   )}
                 </View>
 
                 <View style={styles.profileText}>
-                   <Text style={[styles.roleLabel, { color: colors.icon }]}>SENIOR REPORTER</Text>
-                   <Text style={[styles.nameText, { color: colors.text }]}>{name.toUpperCase()}</Text>
-                   <Text style={[styles.idNumber, { color: colors.icon }]}>ID: RPT-2024-889</Text>
+                   <Text style={[styles.roleLabel, { color: colors.icon }]}>REPORTER</Text>
+                   <Text style={[styles.nameText, { color: colors.text }]}>{userProfile?.username?.toUpperCase() || name.toUpperCase()}</Text>
+                   <Text style={[styles.idNumber, { color: colors.icon }]}>ID: {userProfile?.id || '---'}</Text>
+                   
+                   {/* Verification Status Tag */}
+                   <View style={{ marginTop: 8, paddingHorizontal: 8, paddingVertical: 2, backgroundColor: userProfile?.kyc_status === 'APPROVED' ? '#DCFCE7' : '#FEF2F2', alignSelf: 'flex-start', borderRadius: 4 }}>
+                       <Text style={{ fontSize: 10, fontWeight: '700', color: userProfile?.kyc_status === 'APPROVED' ? '#166534' : '#991B1B' }}>
+                           KYC: {userProfile?.kyc_status || 'PENDING'}
+                       </Text>
+                   </View>
                 </View>
              </View>
 
              <View style={styles.statsRow}>
                 <View style={styles.statItem}>
-                   <Text style={[styles.statValue, { color: colors.text }]}>124</Text>
+                   <Text style={[styles.statValue, { color: colors.text }]}>0</Text>
                    <Text style={[styles.statLabel, { color: colors.icon }]}>STORIES</Text>
                 </View>
                 <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
                 <View style={styles.statItem}>
-                   <Text style={[styles.statValue, { color: colors.text }]}>45.2k</Text>
+                   <Text style={[styles.statValue, { color: colors.text }]}>0</Text>
                    <Text style={[styles.statLabel, { color: colors.icon }]}>VIEWS</Text>
                 </View>
                 <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
                 <View style={styles.statItem}>
-                   <Text style={[styles.statValue, { color: colors.text }]}>4.9</Text>
+                   <Text style={[styles.statValue, { color: colors.text }]}>-</Text>
                    <Text style={[styles.statLabel, { color: colors.icon }]}>RATING</Text>
                 </View>
              </View>
         </Animated.View>
 
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Professional Info</Text>
-          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-             <View style={[styles.inputGroup, { borderBottomColor: colors.border }]}>
-               <Text style={[styles.label, { color: colors.icon }]}>Primary Portal</Text>
-               <Bounceable 
-                 style={styles.dropdownInput}
-                 onPress={() => setPortal(p => p === 'JANPUNJAB' ? 'JANHIMACHAL' : 'JANPUNJAB')}
-               >
-                 <Text style={[styles.inputText, { color: colors.text }]}>{portal}</Text>
-                 <Ionicons name="chevron-down" size={20} color={colors.text} />
-               </Bounceable>
-             </View>
+        {/* Status & Alerts Section */}
+        <Animated.View entering={FadeInUp.delay(200).duration(500)} style={styles.section}>
+             <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border, padding: 20 }]}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+                    <View>
+                        <Text style={[styles.label, { color: colors.icon }]}>ACCOUNT STATUS</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+                            <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: userProfile?.reporter_status === 'APPROVED' ? '#10B981' : userProfile?.reporter_status === 'REJECTED' ? '#EF4444' : '#F59E0B', marginRight: 8 }} />
+                            <Text style={{ fontSize: 18, fontWeight: '800', color: colors.text }}>
+                                {userProfile?.reporter_status || 'PENDING'}
+                            </Text>
+                        </View>
+                    </View>
+                    <View style={{ alignItems: 'flex-end' }}>
+                         <Text style={[styles.label, { color: colors.icon }]}>MEMBER SINCE</Text>
+                         <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text, marginTop: 2 }}>
+                             {userProfile?.created_at ? new Date(userProfile.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : '-'}
+                         </Text>
+                    </View>
+                </View>
 
-             <View style={[styles.inputGroup, { borderBottomColor: colors.border }]}>
-               <Text style={[styles.label, { color: colors.icon }]}>Department / Beat</Text>
-               <TextInput 
-                 style={[styles.input, { color: colors.text }]} 
-                 value={department} 
-                 onChangeText={setDepartment} 
-               />
+                {userProfile?.reporter_status !== 'APPROVED' && (
+                    <View style={{ backgroundColor: userProfile?.reporter_status === 'REJECTED' ? '#FEF2F2' : '#FFFBEB', padding: 12, borderRadius: 8, marginTop: 0 }}>
+                        <Text style={{ fontSize: 13, color: userProfile?.reporter_status === 'REJECTED' ? '#991B1B' : '#92400E', lineHeight: 20 }}>
+                            {userProfile?.reporter_status === 'PENDING' 
+                                ? "Your account is currently under review. You cannot submit stories until an admin approves your profile. This usually takes 24-48 hours."
+                                : userProfile?.reporter_status === 'SUSPENDED'
+                                ? `Your account has been suspended. Reason: ${userProfile?.suspension_reason || 'Violation of terms.'}`
+                                : `Your application was rejected. Reason: ${userProfile?.rejection_reason || 'Incomplete documentation.'}`
+                            }
+                        </Text>
+                    </View>
+                )}
+                
+                {userProfile?.reporter_status === 'APPROVED' && (
+                    <View style={{  marginTop: 0 }}>
+                        <Text style={{ fontSize: 13, color: '#059669', lineHeight: 20 }}>
+                            You are an authorized reporter. You can submit stories via the "New Story" tab.
+                        </Text>
+                    </View>
+                )}
+
+                {userProfile?.admin_notes && (
+                    <View style={{ marginTop: 12, backgroundColor: '#F1F5F9', padding: 12, borderRadius: 8, borderLeftWidth: 4, borderLeftColor: '#334155' }}>
+                        <Text style={{ fontSize: 11, fontWeight: '700', color: '#64748B', marginBottom: 4, textTransform: 'uppercase' }}>
+                            Admin Remarks
+                        </Text>
+                        <Text style={{ fontSize: 13, color: '#334155', fontStyle: 'italic', lineHeight: 20 }}>
+                            "{userProfile.admin_notes}"
+                        </Text>
+                    </View>
+                )}
+
              </View>
-             <View style={[styles.inputGroup, { borderBottomColor: colors.border }]}>
-               <Text style={[styles.label, { color: colors.icon }]}>Location</Text>
-               <TextInput 
-                 style={[styles.input, { color: colors.text }]} 
-                 value={location} 
-                 onChangeText={setLocation} 
-               />
-             </View>
+        </Animated.View>
+
+        {/* Professional Info Section - Added back for Experience */}
+        {userProfile?.years_of_experience !== null && userProfile?.years_of_experience !== undefined && (
+            <View style={styles.section}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Professional Info</Text>
+              <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                 <View style={[styles.inputGroup, { borderBottomColor: 'transparent' }]}>
+                   <Text style={[styles.label, { color: colors.icon }]}>Experience</Text>
+                   <Text style={[styles.inputText, { color: colors.text }]}>{userProfile.years_of_experience} Years</Text>
+                 </View>
+              </View>
+            </View>
+        )}
+
+        <View style={styles.section}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 0 }]}>Personal Details</Text>
+            <TouchableOpacity onPress={() => router.push('/edit-profile')} style={{ padding: 4 }}>
+                <Text style={{ fontSize: 11, fontWeight: '800', color: colors.text }}>EDIT DETAILS</Text>
+            </TouchableOpacity>
           </View>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Personal Details</Text>
           <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+             
+             {/* Read Only Fields for now based on API */}
              <View style={[styles.inputGroup, { borderBottomColor: colors.border }]}>
-               <Text style={[styles.label, { color: colors.icon }]}>Full Name</Text>
-               <TextInput 
-                 style={[styles.input, { color: colors.text }]} 
-                 value={name} 
-                 onChangeText={setName} 
-               />
+               <Text style={[styles.label, { color: colors.icon }]}>Full Name / Username</Text>
+               <Text style={[styles.inputText, { color: colors.text }]}>{name}</Text>
              </View>
+             
              <View style={[styles.inputGroup, { borderBottomColor: colors.border }]}>
                <Text style={[styles.label, { color: colors.icon }]}>Bio</Text>
-               <TextInput 
-                 style={[styles.input, styles.textArea, { color: colors.text }]} 
-                 value={bio} 
-                 onChangeText={setBio} 
-                 multiline
-                 numberOfLines={3}
-               />
+               <Text style={[styles.inputText, { color: colors.text }]}>{bio || 'No bio provided'}</Text>
              </View>
-             <View style={[styles.inputGroup, { borderBottomColor: 'transparent' }]}>
+
+             <View style={[styles.inputGroup, { borderBottomColor: colors.border }]}>
                <Text style={[styles.label, { color: colors.icon }]}>Email Address</Text>
-               <TextInput 
-                 style={[styles.input, { backgroundColor: colors.surface, color: colors.icon, borderRadius: 4, padding: 8 }]} 
-                 value={email} 
-                 editable={false}
-               />
+               <Text style={[styles.inputText, { color: colors.text }]}>{email}</Text>
+             </View>
+
+             <View style={[styles.inputGroup, { borderBottomColor: colors.border }]}>
+               <Text style={[styles.label, { color: colors.icon }]}>Phone Number</Text>
+               <Text style={[styles.inputText, { color: colors.text }]}>{phone}</Text>
+             </View>
+             
+             <View style={[styles.inputGroup, { borderBottomColor: 'transparent' }]}>
+               <Text style={[styles.label, { color: colors.icon }]}>Address</Text>
+               <Text style={[styles.inputText, { color: colors.text, lineHeight: 22 }]}>{fullLocation}</Text>
              </View>
           </View>
         </View>
 
-        <Bounceable style={[styles.saveBtn, { backgroundColor: colors.text }]} onPress={handleSave}>
-          <Text style={[styles.saveBtnText, { color: colors.background }]}>SAVE CHANGES</Text>
-        </Bounceable>
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>KYC Details</Text>
+          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+             <View style={[styles.inputGroup, { borderBottomColor: colors.border }]}>
+               <Text style={[styles.label, { color: colors.icon }]}>ID Type</Text>
+               <Text style={[styles.inputText, { color: colors.text }]}>{idType.replace('_', ' ')}</Text>
+             </View>
+             <View style={[styles.inputGroup, { borderBottomColor: 'transparent' }]}>
+               <Text style={[styles.label, { color: colors.icon }]}>ID Number</Text>
+               <Text style={[styles.inputText, { color: colors.text }]}>{idNumber}</Text>
+             </View>
+          </View>
+        </View>
+
+
 
       </ScrollView>
     </View>
